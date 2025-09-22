@@ -1,0 +1,385 @@
+/*
+Nigerian-Drinks-Shop.jsx
+Single-file React component (default export) built with Tailwind CSS.
+How to use:
+ 1. Ensure your React app has Tailwind CSS configured.
+ 2. Put this file under src/, e.g. src/Nigerian-Drinks-Shop.jsx
+ 3. Import and render it in src/App.jsx: `import NigerianDrinksShop from './Nigerian-Drinks-Shop.jsx'` and use <NigerianDrinksShop />.
+
+Features:
+ - Product listing (Zobo, Tigernut drink, Kunu, Chapman sample)
+ - Cart with quantities, subtotal, localStorage persistence
+ - Simple checkout form (client-side validation, no payment)
+ - Responsive layout, accessible buttons and forms
+ - Clean Tailwind-based UI
+
+You can ask me to: add a product admin panel, connect to Stripe, add an API backend, or generate images for products.
+*/
+
+import React, { useEffect, useState } from 'react';
+
+const SAMPLE_PRODUCTS = [
+  {
+    id: 'zobo-500',
+    name: 'Zobo (Hibiscus Drink) 500ml',
+    price: 350,
+    desc: 'Refreshing homemade zobo made from dried hibiscus petals with a hint of ginger and cloves.',
+    img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=60',
+  },
+  {
+    id: 'tigernut-500',
+    name: 'Tigernut Drink (Kunnu Aya) 500ml',
+    price: 400,
+    desc: 'Creamy and nutty tigernut drink — naturally sweet and lactose-free.',
+    img: 'https://images.unsplash.com/photo-1564758866815-2ffb3c7c3a02?auto=format&fit=crop&w=800&q=60',
+  },
+  {
+    id: 'kunu-500',
+    name: 'Kunun Aya 500ml',
+    price: 300,
+    desc: 'Traditional millet/pepper drink, lightly spiced and chilled.',
+    img: 'https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=800&q=60',
+  },
+  {
+    id: 'chapman-330',
+    name: 'Chapman 330ml (Party Mix)',
+    price: 450,
+    desc: 'Classic Nigerian mocktail — sweet, tangy, and perfect for celebrations.',
+    img: 'https://images.unsplash.com/photo-1542444459-db8b1b0a3f61?auto=format&fit=crop&w=800&q=60',
+  },
+];
+
+function currency(n) {
+  return '₦' + n.toLocaleString();
+}
+
+export default function NigerianDrinksShop() {
+  const [products] = useState(SAMPLE_PRODUCTS);
+  const [cart, setCart] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ndshop_cart');
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [showCart, setShowCart] = useState(false);
+  const [checkoutMode, setCheckoutMode] = useState(false);
+  const [orderSuccess, setOrderSuccess] = useState(null);
+
+  const [form, setForm] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ndshop_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  function addToCart(id, qty = 1) {
+    setCart(prev => {
+      const next = { ...prev };
+      next[id] = (next[id] || 0) + qty;
+      return next;
+    });
+    setShowCart(true);
+  }
+
+  function removeFromCart(id) {
+    setCart(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function updateQty(id, qty) {
+    qty = Math.max(0, Math.floor(qty));
+    setCart(prev => {
+      const next = { ...prev };
+      if (qty <= 0) delete next[id]; else next[id] = qty;
+      return next;
+    });
+  }
+
+  const cartItems = Object.entries(cart).map(([id, qty]) => {
+    const product = products.find(p => p.id === id);
+    return product ? { ...product, qty } : null;
+  }).filter(Boolean);
+
+  const subtotal = cartItems.reduce((s, it) => s + it.price * it.qty, 0);
+  const delivery = subtotal > 2000 || subtotal === 0 ? 0 : 300; // simple rule
+  const total = subtotal + delivery;
+
+  function handleCheckoutSubmit(e) {
+    e.preventDefault();
+    // Basic validation
+    if (!form.name.trim() || !/^\+?[0-9]{7,15}$/.test(form.phone.trim()) || !form.address.trim()) {
+      alert('Please fill name, valid phone number and address. Phone numbers should be digits (7-15).');
+      return;
+    }
+    // simulate order placement
+    const order = {
+      id: 'ORD-' + Date.now(),
+      createdAt: new Date().toISOString(),
+      customer: { ...form },
+      items: cartItems,
+      subtotal,
+      delivery,
+      total,
+    };
+    // In a real site, POST this to your backend
+    console.log('Placing order (simulate):', order);
+    setOrderSuccess(order);
+    setCart({});
+    setCheckoutMode(false);
+    localStorage.removeItem('ndshop_cart');
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <header className="bg-white shadow sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-red-600 text-white p-2 font-bold">ND</div>
+              <div>
+                <h1 className="text-xl font-extrabold">Naija Drinks Hub</h1>
+                <p className="text-xs text-gray-500">Zobo • Tigernut • Kunu • Chapman</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setShowCart(v => !v)}
+                aria-expanded={showCart}
+                className="relative inline-flex items-center gap-2 px-3 py-2 rounded-md border hover:shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 6m12-6l2 6m-13 0h14" />
+                </svg>
+                <span className="hidden sm:inline">Cart</span>
+                <span className="bg-red-500 text-white rounded-full px-2 text-xs font-semibold">{cartItems.reduce((s, it) => s + it.qty, 0)}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setCheckoutMode(true);
+                  setShowCart(true);
+                }}
+                className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-md bg-red-600 text-white"
+              >Checkout</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <section className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {products.map(p => (
+                <article key={p.id} className="bg-white rounded-2xl shadow p-4 flex flex-col">
+                  <div className="aspect-w-16 aspect-h-10 rounded-lg overflow-hidden bg-gray-100 mb-3">
+                    <img src={p.img} alt={p.name} className="object-cover w-full h-full" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold">{p.name}</h3>
+                    <p className="mt-1 text-sm text-gray-600">{p.desc}</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-500">Price</div>
+                      <div className="text-lg font-bold">{currency(p.price)}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => addToCart(p.id, 1)}
+                        className="px-3 py-2 rounded-md border hover:bg-gray-50"
+                        aria-label={`Add ${p.name} to cart`}
+                      >Add</button>
+                      <button
+                        onClick={() => addToCart(p.id, 3)}
+                        title="Add 3-pack"
+                        className="px-3 py-2 rounded-md bg-yellow-100 border"
+                      >+3</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <aside className="bg-white rounded-2xl shadow p-4">
+            <h2 className="text-lg font-semibold">About Us</h2>
+            <p className="text-sm text-gray-600 mt-2">Naija Drinks Hub curates handcrafted Nigerian drinks made with local ingredients. Fresh, natural, and made daily.</p>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold">Delivery</h3>
+              <p className="text-sm text-gray-600 mt-1">Fast local delivery inside the city. Free delivery for orders above ₦2,000.</p>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold">Contact</h3>
+              <p className="text-sm text-gray-600 mt-1">WhatsApp: +234 800 000 0000</p>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold">Opening Hours</h3>
+              <p className="text-sm text-gray-600 mt-1">Mon–Sat: 8:00 — 18:00</p>
+            </div>
+          </aside>
+        </section>
+
+        {/* Cart drawer / panel */}
+        {showCart && (
+          <section aria-live="polite" className="mt-8">
+            <div className="bg-white rounded-2xl shadow p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Your Cart</h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setCart({}); }} className="text-sm text-red-600">Clear</button>
+                  <button onClick={() => setShowCart(false)} className="text-sm text-gray-500">Close</button>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                {cartItems.length === 0 ? (
+                  <div className="text-gray-600">Your cart is empty. Add Zobo or Tigernut drink to get started.</div>
+                ) : (
+                  <div className="space-y-4">
+                    {cartItems.map(it => (
+                      <div key={it.id} className="flex items-center gap-4">
+                        <img src={it.img} alt={it.name} className="w-16 h-16 rounded-lg object-cover" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold">{it.name}</div>
+                              <div className="text-sm text-gray-500">{currency(it.price)}</div>
+                            </div>
+                            <div className="text-sm">{currency(it.price * it.qty)}</div>
+                          </div>
+                          <div className="mt-2 flex items-center gap-2">
+                            <label className="sr-only">Quantity</label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={it.qty}
+                              onChange={(e) => updateQty(it.id, Number(e.target.value))}
+                              className="w-20 rounded border px-2 py-1 text-sm"
+                            />
+                            <button onClick={() => removeFromCart(it.id)} className="text-sm text-red-600">Remove</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="border-t pt-4 flex flex-col gap-2">
+                      <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{currency(subtotal)}</span></div>
+                      <div className="flex justify-between text-sm text-gray-600"><span>Delivery</span><span>{delivery === 0 ? 'Free' : currency(delivery)}</span></div>
+                      <div className="flex justify-between font-bold text-lg"><span>Total</span><span>{currency(total)}</span></div>
+                      <div className="flex gap-2 mt-2">
+                        <button onClick={() => { setCheckoutMode(true); }} disabled={cartItems.length===0} className="flex-1 px-4 py-2 rounded-md bg-red-600 text-white">Checkout</button>
+                        <button onClick={() => { setCart({}); }} className="px-4 py-2 rounded-md border">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {checkoutMode && (
+          <section className="mt-8">
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="text-lg font-semibold">Checkout</h2>
+              <form onSubmit={handleCheckoutSubmit} className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium">Full name</label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="mt-1 block w-full rounded border px-3 py-2"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium">Phone (digits only)</label>
+                  <input
+                    value={form.phone}
+                    onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
+                    className="mt-1 block w-full rounded border px-3 py-2"
+                    placeholder="e.g. +2348100000000"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium">Delivery address</label>
+                  <input
+                    value={form.address}
+                    onChange={(e) => setForm(f => ({ ...f, address: e.target.value }))}
+                    className="mt-1 block w-full rounded border px-3 py-2"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium">Order notes (optional)</label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))}
+                    className="mt-1 block w-full rounded border px-3 py-2"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm text-gray-600">Amount to pay</div>
+                    <div className="text-lg font-bold">{currency(total)}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setCheckoutMode(false)} className="px-4 py-2 border rounded-md">Back</button>
+                    <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-md">Place order (no payment)</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </section>
+        )}
+
+        {orderSuccess && (
+          <section className="mt-8">
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="text-lg font-semibold">Order Placed</h2>
+              <p className="text-sm text-gray-600 mt-2">Thank you, <strong>{orderSuccess.customer.name}</strong>! Your order <strong>{orderSuccess.id}</strong> was placed on {new Date(orderSuccess.createdAt).toLocaleString()}.</p>
+              <div className="mt-4">
+                <h3 className="font-semibold">Summary</h3>
+                <ul className="mt-2 space-y-2">
+                  {orderSuccess.items.map(it => (
+                    <li key={it.id} className="text-sm">{it.qty} × {it.name} — {currency(it.price * it.qty)}</li>
+                  ))}
+                </ul>
+                <div className="mt-3 flex justify-between font-bold"><span>Total</span><span>{currency(orderSuccess.total)}</span></div>
+              </div>
+            </div>
+          </section>
+        )}
+
+      </main>
+
+      <footer className="bg-white border-t">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-sm text-gray-600 flex items-center justify-between">
+          <div>© {new Date().getFullYear()} Naija Drinks Hub — Handcrafted Nigerian drinks</div>
+          <div>Built with ❤️ • Local ingredients</div>
+        </div>
+      </footer>
+    </div>
+  );
+}
